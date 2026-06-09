@@ -464,6 +464,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
         <div class="cm-section-title">Notas internas</div>
         <textarea class="cm-textarea" id="ci-notes" rows="3" placeholder="Observações internas sobre este cliente..."></textarea>
       </div>
+      <div class="cm-section">
+        <div class="cm-section-title">Permissões da assistente</div>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;color:#555;padding:4px 0">
+          <input type="checkbox" id="ci-assistant-can-add" style="width:16px;height:16px;accent-color:#7c3aed;cursor:pointer"/>
+          Assistente pode adicionar tarefas neste cliente
+        </label>
+      </div>
     </div>
     <div class="cm-footer">
       <button class="btn btn-ghost" onclick="closeClientModal()">Cancelar</button>
@@ -698,6 +705,7 @@ function openClientModal(colId){
   document.getElementById('ci-value').value=info.contractValue||'';
   document.getElementById('ci-payday').value=info.payDay||'';
   document.getElementById('ci-notes').value=info.notes||'';
+  document.getElementById('ci-assistant-can-add').checked=!!col.assistantCanAdd;
   // Platforms
   const platWrap=document.getElementById('ci-platforms');
   platWrap.innerHTML=PLATFORMS.map(p=>{
@@ -757,6 +765,7 @@ function saveClientInfo(){
     paymentHistory:tmpPayHistory,
     notes:document.getElementById('ci-notes').value.trim(),
   };
+  col.assistantCanAdd=document.getElementById('ci-assistant-can-add').checked;
   closeClientModal();
   if(currentTab==='clients')renderClients();
   scheduleSave();
@@ -896,7 +905,7 @@ function renderBoard(){
       <div class="tasks" id="tasks-${col.id}">
         ${tasks.length===0?'<div class="empty-tasks">Nenhuma tarefa</div>':tasks.map(t=>renderTaskCard(t,col.id)).join('')}
       </div>
-      ${isAdmin()?`<button class="add-task-btn" onclick="openAddForm('${col.id}')">&#65291; Adicionar tarefa</button>${renderAddForm(col.id)}`:''}
+      ${(isAdmin()||col.assistantCanAdd)?`<button class="add-task-btn" onclick="openAddForm('${col.id}')">&#65291; Adicionar tarefa</button>${renderAddForm(col.id)}`:''}
     `;
     board.insertBefore(el,addCard);
     if(openForms[col.id]){setTimeout(()=>{const f=document.getElementById('af-'+col.id);if(f)f.classList.add('open');},0);}
@@ -941,10 +950,13 @@ function renderTaskCard(t,colId,clientLabel){
 }
 function renderAddForm(colId){
   const members=state.members.filter(Boolean);
+  const assigneeField=isAdmin()
+    ?`<select id="sel-a-${colId}">${members.map(m=>`<option>${esc(m)}</option>`).join('')}</select>`
+    :`<span style="font-size:11px;font-weight:600;color:#7c3aed;padding:4px 8px;background:#f5f0ff;border-radius:6px" id="sel-a-${colId}" data-val="${esc(state.members[1]||'')}">&#129309; ${esc(state.members[1]||'Assistente')}</span>`;
   return `<div class="add-form" id="af-${colId}">
     <textarea id="txt-${colId}" rows="2" placeholder="Descreva a tarefa..."></textarea>
     <div class="add-form-row">
-      <select id="sel-a-${colId}">${members.map(m=>`<option>${esc(m)}</option>`).join('')}</select>
+      ${assigneeField}
       <select id="sel-p-${colId}"><option value="media">Média</option><option value="alta">Alta</option><option value="baixa">Baixa</option></select>
     </div>
     <div class="add-form-row">
@@ -1001,7 +1013,8 @@ function closeAddForm(cid){
 }
 function addTask(cid){
   const txt=document.getElementById('txt-'+cid)?.value.trim();if(!txt)return;
-  const assignee=document.getElementById('sel-a-'+cid)?.value||state.members[0];
+  const selEl=document.getElementById('sel-a-'+cid);
+  const assignee=isAdmin()?(selEl?.value||state.members[0]):(selEl?.dataset?.val||state.members[1]||state.members[0]);
   const priority=document.getElementById('sel-p-'+cid)?.value||'media';
   const dueDate=document.getElementById('sel-d-'+cid)?.value||null;
   const recurring=document.getElementById('sel-r-'+cid)?.value||'none';
