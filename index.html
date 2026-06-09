@@ -891,7 +891,8 @@ function renderBoard(){
   const board=document.getElementById('board');
   board.querySelectorAll('.column').forEach(c=>c.remove());
   const addCard=document.getElementById('add-col-card');
-  state.columns.forEach(col=>{
+  const visibleCols=isAdmin()?state.columns:state.columns.filter(col=>(col.tasks||[]).some(t=>!t.archived&&t.assignee===state.members[1])||(col.assistantCanAdd));
+  visibleCols.forEach(col=>{
     const tasks=filterTasks((col.tasks||[]).filter(t=>!t.archived));
     const done=tasks.filter(t=>t.done).length;
     const el=document.createElement('div');el.className='column';
